@@ -26,6 +26,16 @@
                 padding: 0;
             }
         </style>
+        <script>
+            // immediately focus on the canvas so that the user can start playing
+
+            window.addEventListener("load", () => {
+                document.querySelector("canvas").focus();
+            });
+            document.addEventListener("click", () => {
+                document.querySelector("canvas").focus();
+            });
+        </script>
 
         <base data-trunk-public-url />
     </head>
