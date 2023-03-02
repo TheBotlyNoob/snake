@@ -1,6 +1,8 @@
 use bevy::{prelude::*, time::FixedTimestep};
 use rand::prelude::*;
 
+const WINDOW_SIZE: f32 = 800.;
+
 #[derive(Component)]
 struct SnakeHead {
     direction: Direction,
@@ -114,7 +116,8 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
 }
 
 fn snake_movement(
-    mut segs: ResMut<SnakeSegments>,
+    segs: ResMut<SnakeSegments>,
+    mut direction: ResMut<CurrentDirection>,
     // mut head_positions: Query<&mut Transform, With<SnakeHead>>,  - we can't use Transform here because the positioning system uses [`Position`] and [`Size`]
     mut head_positions: Query<(Entity, &SnakeHead)>,
     mut poses: Query<&mut Position>,
@@ -124,6 +127,7 @@ fn snake_movement(
             .iter()
             .map(|e| *poses.get_mut(*e).unwrap())
             .collect::<Vec<Position>>();
+
         let mut head_pos = poses.get_mut(head_id).unwrap();
         match &head.direction {
             Direction::Left => {
@@ -139,16 +143,19 @@ fn snake_movement(
                 head_pos.y -= 1;
             }
         };
-        segment_positions
-            .iter()
-            .zip(segs.iter().skip(1))
-            .for_each(|(pos, segment)| {
-                *poses.get_mut(*segment).unwrap() = *pos;
-            });
+        *direction = CurrentDirection(head.direction);
+
+        for (pos, seg) in segment_positions.iter().zip(segs.iter().skip(1)) {
+            *poses.get_mut(*seg).unwrap() = *pos;
+        }
     }
 }
 
-fn snake_input(kbd_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
+fn snake_input(
+    kbd_input: Res<Input<KeyCode>>,
+    direction: Res<CurrentDirection>,
+    mut heads: Query<&mut SnakeHead>,
+) {
     for mut head in &mut heads {
         let dir = if kbd_input.pressed(KeyCode::Up) {
             Direction::Up
@@ -162,7 +169,7 @@ fn snake_input(kbd_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>)
             return;
         };
 
-        if dir != head.direction.opposite() {
+        if dir != direction.0.opposite() {
             head.direction = dir;
         }
     }
@@ -212,6 +219,12 @@ fn spawn_food(mut commands: Commands) {
         .insert(Size::square(0.8));
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Resource)]
+/// used to store the direction of the snake's head,
+/// but it's only updated when the snake moves - not when there is input
+/// this is used to prevent the snake from going backwards
+struct CurrentDirection(Direction);
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 enum Direction {
     Up,
@@ -234,6 +247,7 @@ fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0., 0., 0.)))
         .insert_resource(SnakeSegments::default())
+        .insert_resource(CurrentDirection(Direction::Up))
         .add_startup_system(setup_camera)
         .add_startup_system(spawn_snake)
         .add_system(snake_input.before(snake_movement))
@@ -265,13 +279,14 @@ fn main() {
                         .unwrap()
                         .min(window.inner_width().unwrap().as_f64().unwrap())
                 } as f32;
+                #[cfg(not(target_arch = "wasm32"))]
+                let window = WINDOW_SIZE;
 
                 WindowDescriptor {
                     title: "Snake".to_string(),
-                    #[cfg(target_arch = "wasm32")]
                     width: window,
-                    #[cfg(target_arch = "wasm32")]
                     height: window,
+                    resizable: false,
 
                     ..default()
                 }
