@@ -42,24 +42,28 @@ fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2dBundle::default());
 }
 
-fn spawn_snake(mut commands: Commands) {
-    commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                color: SNAKE_HEAD_COLOR,
+fn spawn_snake(mut commands: Commands, mut segs: ResMut<SnakeSegments>) {
+    *segs = SnakeSegments(vec![
+        commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    color: SNAKE_HEAD_COLOR,
+                    ..default()
+                },
+                transform: Transform {
+                    scale: Vec3::new(10., 10., 10.),
+                    ..default()
+                },
                 ..default()
-            },
-            transform: Transform {
-                scale: Vec3::new(10., 10., 10.),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(SnakeHead {
-            direction: Direction::Right,
-        })
-        .insert(Position { x: 3, y: 3 })
-        .insert(Size::square(0.8));
+            })
+            .insert(SnakeHead {
+                direction: Direction::Right,
+            })
+            .insert(Position { x: 3, y: 3 })
+            .insert(Size::square(0.8))
+            .id(),
+        spawn_segment(commands, Position { x: 3, y: 2 }),
+    ]);
 }
 
 fn scale(windows: Res<Windows>, mut query: Query<(&Size, &mut Transform)>) {
@@ -110,16 +114,37 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
 }
 
 fn snake_movement(
+    mut segs: ResMut<SnakeSegments>,
     // mut head_positions: Query<&mut Transform, With<SnakeHead>>,  - we can't use Transform here because the positioning system uses [`Position`] and [`Size`]
-    mut head_positions: Query<(&SnakeHead, &mut Position)>,
+    mut head_positions: Query<(Entity, &SnakeHead)>,
+    mut poses: Query<&mut Position>,
 ) {
-    for (head, mut pos) in &mut head_positions {
-        match head.direction {
-            Direction::Up => pos.y += 1,
-            Direction::Down => pos.y -= 1,
-            Direction::Left => pos.x -= 1,
-            Direction::Right => pos.x += 1,
-        }
+    if let Some((head_id, head)) = head_positions.iter_mut().next() {
+        let segment_positions = segs
+            .iter()
+            .map(|e| *poses.get_mut(*e).unwrap())
+            .collect::<Vec<Position>>();
+        let mut head_pos = poses.get_mut(head_id).unwrap();
+        match &head.direction {
+            Direction::Left => {
+                head_pos.x -= 1;
+            }
+            Direction::Right => {
+                head_pos.x += 1;
+            }
+            Direction::Up => {
+                head_pos.y += 1;
+            }
+            Direction::Down => {
+                head_pos.y -= 1;
+            }
+        };
+        segment_positions
+            .iter()
+            .zip(segs.iter().skip(1))
+            .for_each(|(pos, segment)| {
+                *poses.get_mut(*segment).unwrap() = *pos;
+            });
     }
 }
 
@@ -207,7 +232,7 @@ impl Direction {
 
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .insert_resource(ClearColor(Color::rgb(0., 0., 0.)))
         .insert_resource(SnakeSegments::default())
         .add_startup_system(setup_camera)
         .add_startup_system(spawn_snake)
@@ -229,11 +254,27 @@ fn main() {
                 .with_system(position_translation),
         )
         .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "Snake".to_string(),
-                width: 500.,
-                height: 500.,
-                ..default()
+            window: {
+                #[cfg(target_arch = "wasm32")]
+                let window = {
+                    let window = web_sys::window().unwrap();
+                    window
+                        .inner_height()
+                        .unwrap()
+                        .as_f64()
+                        .unwrap()
+                        .min(window.inner_width().unwrap().as_f64().unwrap())
+                } as f32;
+
+                WindowDescriptor {
+                    title: "Snake".to_string(),
+                    #[cfg(target_arch = "wasm32")]
+                    width: window,
+                    #[cfg(target_arch = "wasm32")]
+                    height: window,
+
+                    ..default()
+                }
             },
             ..default()
         }))

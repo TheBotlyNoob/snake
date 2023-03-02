@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+        />
+        <title>Snake</title>
+
+        <style>
+            body,
+            html {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+                background-color: gray;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            canvas {
+                touch-action: none;
+                margin: 0;
+                padding: 0;
+            }
+        </style>
+
+        <base data-trunk-public-url />
+    </head>
+    <body>
+        <link
+            data-trunk
+            rel="rust"
+            href="Cargo.toml"
+            data-wasm-opt="z"
+            data-bin="snake"
+        />
+    </body>
+</html>
