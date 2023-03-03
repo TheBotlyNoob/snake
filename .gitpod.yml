@@ -5,8 +5,10 @@
 # Learn more from ready-to-use templates: https://www.gitpod.io/docs/introduction/getting-started/quickstart
 
 tasks:
-  - init: sudo apt-get install -y libudev-dev libasound2-dev && cargo build
+  - init: cargo build
     command: cargo watch -x run
+
+image: gitpod/workspace-full-vnc
 
 
 
