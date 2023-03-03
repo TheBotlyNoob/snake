@@ -5,7 +5,7 @@ use crate::{Position, SnakeHead, SnakeSegments};
 #[derive(Default, Debug, Deref, DerefMut, Resource)]
 pub(crate) struct LastSegmentPosition(pub Option<Position>);
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Resource)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deref, DerefMut, Resource)]
 /// used to store the direction of the snake's head,
 /// but it's only updated when the snake moves - not when there is input
 /// this is used to prevent the snake from going backwards
@@ -87,7 +87,7 @@ pub(crate) fn input(
             return;
         };
 
-        if dir != direction.0.opposite() {
+        if dir != direction.opposite() {
             head.direction = dir;
         }
     }

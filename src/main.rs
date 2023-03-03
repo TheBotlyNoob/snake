@@ -66,7 +66,8 @@ fn spawn_snake(
     mut segs: ResMut<SnakeSegments>,
     mut spawn_food_writer: EventWriter<food::SpawnFoodEvent>,
 ) {
-    *segs = SnakeSegments(vec![
+    *segs = SnakeSegments(Vec::with_capacity(2));
+    segs.push(
         commands
             .spawn(SpriteBundle {
                 sprite: Sprite {
@@ -85,12 +86,34 @@ fn spawn_snake(
             .insert(Position { x: 3, y: 3 })
             .insert(Size::square(0.8))
             .id(),
-        spawn_segment(commands, Position { x: 3, y: 2 }),
-    ]);
+    );
+
+    spawn_segment(commands, segs, Position { x: 3, y: 2 });
 
     for _ in 0..FOOD_AMOUNT {
         spawn_food_writer.send(food::SpawnFoodEvent);
     }
+}
+
+fn spawn_segment(mut commands: Commands, mut segs: ResMut<SnakeSegments>, pos: Position) -> Entity {
+    let entity = commands
+        .spawn(SpriteBundle {
+            sprite: Sprite {
+                color: SNAKE_BODY_COLOR,
+                ..default()
+            },
+            transform: Transform {
+                scale: Vec3::new(10., 10., 10.),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(SnakeSegment)
+        .insert(pos)
+        .insert(Size::square(0.6))
+        .id();
+    segs.push(entity);
+    entity
 }
 
 fn scale(windows: Res<Windows>, mut query: Query<(&Size, &mut Transform)>) {
@@ -124,7 +147,7 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
     /// ```
     fn conv(pos: f32, window_bound: f32, arena_bound: f32) -> f32 {
         let tile = window_bound / arena_bound;
-        (pos / arena_bound).mul_add(window_bound, -(window_bound / 2.)) + (tile / 2.)
+        (pos / arena_bound).mul_add(window_bound, -window_bound / 2.) + (tile / 2.)
     }
 
     let Some(window) = windows.get_primary() else {
@@ -138,25 +161,6 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
             0.,
         );
     }
-}
-
-fn spawn_segment(mut commands: Commands, pos: Position) -> Entity {
-    commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                color: SNAKE_BODY_COLOR,
-                ..default()
-            },
-            transform: Transform {
-                scale: Vec3::new(10., 10., 10.),
-                ..default()
-            },
-            ..default()
-        })
-        .insert(SnakeSegment)
-        .insert(pos)
-        .insert(Size::square(0.6))
-        .id()
 }
 
 fn main() {

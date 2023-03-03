@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use rand::prelude::*;
 
 use crate::{
-    movement::LastSegmentPosition, spawn_segment, Position, Size, SnakeHead, ARENA_HEIGHT,
-    ARENA_WIDTH, FOOD_COLOR,
+    movement::LastSegmentPosition, spawn_segment, Position, Size, SnakeHead, SnakeSegments,
+    ARENA_HEIGHT, ARENA_WIDTH, FOOD_COLOR,
 };
 
 #[derive(Component)]
@@ -30,9 +30,10 @@ pub(crate) fn growth_event(
     last_segment: Res<LastSegmentPosition>,
     mut spawn_food_writer: EventWriter<SpawnFoodEvent>,
     mut growth_events: EventReader<GrowthEvent>,
+    segs: ResMut<SnakeSegments>,
 ) {
     if let Some(pos) = last_segment.0 && growth_events.iter().next().is_some() {
-        spawn_segment(commands, pos);
+        spawn_segment(commands, segs, pos);
         spawn_food_writer.send(SpawnFoodEvent);
     }
 }
@@ -58,10 +59,10 @@ pub(crate) fn spawn_food_event(
                 ..default()
             })
             .insert(Food)
-            .insert(Position {
+            .insert(dbg!(Position {
                 x: rng.gen_range(0..=ARENA_WIDTH as _),
                 y: rng.gen_range(0..=ARENA_HEIGHT as _),
-            })
+            }))
             .insert(Size::square(0.4));
     }
 }
